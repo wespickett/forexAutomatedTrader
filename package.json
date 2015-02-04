@@ -1,0 +1,19 @@
+{
+  "name": "traderApp",
+  "version": "0.0.0",
+  "description": "fx trading",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://wespickett@wespickett.git.cloudforge.com/traderapp.git"
+  },
+  "author": "Wes Pickett",
+  "license": "ISC",
+  "devDependencies": {
+    "express": "^4.11.2",
+    "body-parser": "^1.11.0"
+  }
+}
