@@ -25,9 +25,12 @@ server.on('connection', function(stream) {
 });
 
 var instruments = ['USD_CAD'];
+var runCount = 0;
 
 setInterval(function() {
-	console.log('--- 1. Get prices');
+
+	runCount++;
+	console.log(runCount + '--- 1. Get prices');
 	fxAPI.getPrices(instruments, function(data) {
 
 		if (typeof data.prices === 'undefined') {
