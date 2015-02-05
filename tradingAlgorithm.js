@@ -1,8 +1,8 @@
 (function() { 
 
 	var POSITIONS = {
-		LONG: 1,
-		SHORT: 0
+		LONG: 'buy',
+		SHORT: 'sell'
 	},
 	fs = require('fs'),
 	fxAPI = require('./api.js'),
@@ -11,9 +11,16 @@
 	PIPS_FOR_STOP_LOSS = 10,
 	fxAPI;
 
-	//TODO: real data
+	function getInstrumentPosition(instrument, callback) {
+		fxAPI.getPositionForInstrument(instrument, callback);
+	}
+
 	function loadInstrumentData(instrument, callback) {
-		fxAPI.loadPositionsForInstrument(instrument, callback);
+		//TODO: autocreate file if doesn't exist
+		fs.readFile(POSITIONS_FOLDER + '/' + instrument, function(err, data) {
+			if (err) throw err;
+			if (typeof callback === 'function') callback(data);
+		});
 	}
 
 	function saveInstrumentData(instrument, data, callback) {
@@ -23,58 +30,124 @@
 		});
 	}
 
-	function setPositionShort(instrumentData) {
-		instrumentData.currentPosition = POSITIONS.SHORT;
-		//save
+	function openPositionForInstrument(instrument, positionDirection, stopLoss, callback) {
+		fxAPI.openPosition(instrument, positionDirection, stopLoss, callback);
 	}
 
-	function setPositionLong(instrumentData) {
-		instrumentData.currentPosition = POSITIONS.LONG;
-		//save
+	function closePositionForInstrument(instrument, positionDirection, stopLoss, callback) {
+		fxAPI.closePosition(instrument, callback);
 	}
 
-	function setBuyPrice(instrumentData, buyPrice) {
-
+	function getTransactions(callback) {
+		fxAPI.getTransactions(callback);
 	}
 
 	var publicReturn = {
 		updatePrice: function(instrument, ask, bid) {
-			// loadInstrumentData(instrument, function(instrumentData) {
+			console.log('--- 2. Get position: ' + instrument);
+			getInstrumentPosition(instrument, function(instrumentData) {
 
-			// 	console.log(instrumentData);
-			// 	instrumentData = instrumentData || {};
+				console.log(instrumentData);
+				var midPoint = (ask + bid) / 2;
 
-			// 	var midPoint = (ask + bid) / 2;
+				function decide(instrumentData) {
 
-			// 	if (!instrumentData.currentPosition) {
-			// 		instrumentData.currentPosition = POSITIONS.LONG;
-			// 	}
+					var currentDelta = midPoint - instrumentData.avgPrice;
+					console.log('currentDelta: ' + currentDelta + ' position: ' + instrumentData.side);
 
-			// 	if (!instrumentData.buyPrice) {
-			// 		instrumentData.buyPrice = midPoint;
-			// 	}
+					if (instrumentData.side === POSITIONS.LONG) {
+						if (currentDelta >= PIPS_FOR_TAKE_PROFIT) {
+							//take profit, stay long
+							console.log('--- 3. take profit, stay long');
+							closePositionForInstrument(instrument, function() {
 
-			// 	//saveInstrumentData(instrument, instrumentData);
-			// 	var currentDelta = midPoint - instrumentData.buyPrice;
+								console.log('position closed for profit');
+								//TODO: stop loss not exact since it's a market order it might not execute exactly at midPoint price
+								openPositionForInstrument(instrument, POSITIONS.LONG, midPoint - PIPS_FOR_STOP_LOSS, function(createdPosition) {
 
-			// 	if (instrumentData.currentPosition === POSITIONS.LONG) {
-			// 		if (currentDelta >= PIPS_FOR_TAKE_PROFIT) {
-			// 			//take profit, stay long
-			// 			setBuyPrice(instrumentData, midPoint);
-			// 		} else if (currentDelta <= -PIPS_FOR_STOP_LOSS) {
-			// 			//stop loss, switch to short
+									console.log('new position: ' + createdPosition);
+									if (createdPosition.instrument && createdPosition.instrument === instrument && createdPosition.price) {
+										//TODO: don't create an object to save from scratch, use existing structure
+										saveInstrumentData(instrument, {side: POSITIONS.LONG, price: createdPosition.price}, function() {
+											console.log('saved localInstrumentData.');
+										});
+									} else {
+										console.log('Error creating position for ' + instrument);
+									}
+								});
+							});
+						}
+					} else if (instrumentData.side === POSITIONS.SHORT) {
+						if (currentDelta <= -PIPS_FOR_TAKE_PROFIT) {
+							//take profit, stay short
+							console.log('--- 3. take profit, stay short');
+							closePositionForInstrument(instrument, function() {
 
-			// 		}
-			// 	} else if (instrumentDatacurrentPosition === POSITIONS.SHORT) {
-			// 		if (currentDelta <= -PIPS_FOR_TAKE_PROFIT) {
-			// 			//take profit, stay short
-						
-			// 		} else if (currentDelta >= PIPS_FOR_STOP_LOSS) {
-			// 			//stop loss, switch to long
-						
-			// 		}
-			// 	}
-			// });
+								console.log('position closed for profit');
+								//TODO: stop loss not exact since it's a market order it might not execute exactly at midPoint price
+								openPositionForInstrument(instrument, POSITIONS.SHORT, midPoint - PIPS_FOR_STOP_LOSS, function(createdPosition) {
+
+									console.log('new position: ' + createdPosition);
+									if (createdPosition.instrument && createdPosition.instrument === instrument && createdPosition.price) {
+										//TODO: don't create an object to save from scratch, use existing structure
+										saveInstrumentData(instrument, {side: POSITIONS.SHORT, price: createdPosition.price}, function() {
+											console.log('saved localInstrumentData.');
+										});
+									} else {
+										console.log('Error creating position for ' + instrument);
+									}
+								});
+							});
+						}
+					} else {
+						console.log('no action.');
+					}
+				}
+
+				if (instrumentData.code && instrumentData.code === 14) {
+
+					console.log('No position for ' + instrument);
+					//No position for this instrument
+					loadInstrumentData(instrument, function(localInstrumentData) {
+
+						localInstrumentData = localInstrumentData || {};
+						console.log('localInstrumentData: ' + localInstrumentData);
+
+						if (typeof localInstrumentData.side === 'undefined') {
+							localInstrumentData.side = localInstrumentData.side || POSITIONS.LONG;
+						}
+
+						if (localInstrumentData.price) {
+							//somewhat detect if position doesn't exist from stoploss being triggered.
+							//if it was triggered from stoploss, then switch direction
+							if (localInstrumentData.price - midPoint <= PIPS_FOR_STOP_LOSS && localInstrumentData.side === POSITIONS.LONG) {
+								localInstrumentData.side = POSITIONS.SHORT;
+								console.log('stoploss happened, switch to ' + localInstrumentData.side);
+							} else if (localInstrumentData.price - midPoint >= PIPS_FOR_STOP_LOSS && localInstrumentData.side === POSITIONS.SHORT) {
+								localInstrumentData.side = POSITIONS.LONG;
+								console.log('stoploss happened, switch to ' + localInstrumentData.side);
+							}
+						}
+
+						//TODO: stop loss not exact since it's a market order it might not execute exactly at midPoint price
+						openPositionForInstrument(instrument, localInstrumentData.side, midPoint - PIPS_FOR_STOP_LOSS, function(createdPosition) {
+
+							console.log('created position: ' + createdPosition);
+							if (createdPosition.instrument && createdPosition.instrument === instrument && createdPosition.price) {
+								localInstrumentData.price = createdPosition.price;
+								saveInstrumentData(instrument, localInstrumentData, function() {
+									console.log('saved localInstrumentData.');
+								});
+							} else {
+								console.log('Error creating position for ' + instrument);
+							}
+						});
+					});
+				} else if (instrumentData.instrument && instrumentData.instrument === instrument) {
+					//existing position
+					decide(instrumentData);
+				}
+			});
 		}
 	};
 

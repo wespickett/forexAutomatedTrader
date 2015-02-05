@@ -1,50 +1,63 @@
 (function() {
 
-	var HOST_DOMAIN = 'api-fxpractice.oanda.com';
-	var API_VERSION = 'v1';
+	var HOST_DOMAIN = 'api-fxpractice.oanda.com',
+		API_VERSION = 'v1',
+		ACCOUNT_ID,
+		https = require('https'),
+		http = require('http'),
+		protocol = http,
+		instruments,
+		baseOptions = {
+			host: HOST_DOMAIN,
+			port: 80,
+			method: 'GET',
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded',
+				'Connection': 'Keep-Alive'
+			}
+		};
 
-	//fxsandbox
-	/*{
-		"username" : "sonales",
-		"password" : "HomGejbad,",
-		"accountId" : 3148534
-	}*/
-	//var ACCOUNT_ID = '3148534';
+	//TODO: make config setting
+	var DEV = false;
 
-	//fxpractice
-	var ACCOUNT_ID = '7668620';
-	var AUTH_TOKEN = 'a635e739eb32ca6528287e7d7e7cad03-3e6811d5d0011937603dba6d6ee0965f';
+	if (DEV) {
+		//fxsandbox
+		/*{
+			"username" : "sonales",
+			"password" : "HomGejbad,",
+			"accountId" : 3148534
+		}*/
+		ACCOUNT_ID = '3148534';
+		HOST_DOMAIN = 'api-sandbox.oanda.com';	
+	} else {
+		//fxpractice
+		var ACCOUNT_ID = '7668620';
+		var AUTH_TOKEN = 'a635e739eb32ca6528287e7d7e7cad03-3e6811d5d0011937603dba6d6ee0965f';
 
-	//fxtrade
-	//var ACCOUNT_ID = '490624';
-	//var AUTH_TOKEN = '626fdd7d465fdf9eb95c2276c2f7a2f7-40eb035ce0891811e7c3f791f47be66d';
+		//fxtrade
+		//var ACCOUNT_ID = '490624';
+		//var AUTH_TOKEN = '626fdd7d465fdf9eb95c2276c2f7a2f7-40eb035ce0891811e7c3f791f47be66d';
 
-	var https = require('https');
-	var instruments;
-	var baseOptions = {
-		host: HOST_DOMAIN,
-		port: 443,
-		method: 'GET',
-		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded',
-			'Authorization': 'Bearer ' + AUTH_TOKEN,
-			'Connection': 'Keep-Alive'
-		}
-	};
+		baseOptions.headers['Authorization'] = 'Bearer ' + AUTH_TOKEN;
+		baseOptions.port = 443;
+		protocol = https;
+	}
 
 	function getBaseOptions() {
+		//clone object
 		return JSON.parse(JSON.stringify(baseOptions));
 	};
 
-	function APIRequest(options, callback) {
-		console.log(options);
-		var fxApiReq = https.request(options, function(fxApiRes) {
-			console.log('STATUS: ' + fxApiRes.statusCode);
-		  	console.log('HEADERS: ' + JSON.stringify(fxApiRes.headers));
+	function APIRequest(options, callback, body) {
+
+		body = body || '';
+
+		var fxApiReq = protocol.request(options, function(fxApiRes) {
+			// console.log('STATUS: ' + fxApiRes.statusCode);
+		 	// console.log('HEADERS: ' + JSON.stringify(fxApiRes.headers));
 
 			fxApiRes.on('data', function(data) {
 				var jsonData = JSON.parse(data);
-				console.log(jsonData);
 				if (typeof callback === 'function') callback(jsonData);
 			});
 		})
@@ -52,19 +65,49 @@
 			//TODO: better error reporting
 			console.log('ERROR: with fxApiReq: ' + e.message);
 		})
-		.end();
+		.end(body);
 	}
 
 	var publicReturn = {
 		getPrices: function(instruments, callback) {
 			var options = getBaseOptions();
-			//options.path = '/' + API_VERSION + '/prices?instruments=' + instruments.join(',');
-			options.path = '/' + API_VERSION + '/accounts/' + ACCOUNT_ID + '/positions';
+			options.path = '/' + API_VERSION + '/prices?instruments=' + instruments.join(',');
+
 			APIRequest(options, callback);
 		},
-		loadPositionsForInstrument: function(instrument, callback) {
+		getPositionForInstrument: function(instrument, callback) {
 			var options = getBaseOptions();
-			options.path = '/' + API_VERSION + '/accounts';
+			options.path = '/' + API_VERSION + '/accounts/' + ACCOUNT_ID + '/positions/' + instrument;
+
+			APIRequest(options, callback);
+		},
+		openPosition: function(instrument, positionDirection, stopLoss, callback) {
+			//first check for existing orders
+			var options = getBaseOptions();
+			options.method = 'GET';
+			options.path = '/' + API_VERSION + '/accounts/' + ACCOUNT_ID + '/orders/?instrument=' + instrument;
+			
+			APIRequest(options, function(existingOrders) {
+
+				//if existing order, do nothing
+				if (existingOrders.orders && existingOrders.orders.length === 0) {
+
+					var units = '1000'; //TODO: calculate this number
+					var body = 'Content-Type=application%2Fx-www-form-urlencoded&instrument=' + instrument + '&units=' + units + '&type=market&side=' + positionDirection;
+
+					var options = getBaseOptions();
+					options.method = 'POST';
+					options.path = '/' + API_VERSION + '/accounts/' + ACCOUNT_ID + '/orders';
+
+					APIRequest(options, callback, body);
+				}
+			});
+		},
+		closePosition: function(instrument, callback) {
+			var options = getBaseOptions();
+			options.method = 'DELETE';
+			options.path = '/' + API_VERSION + '/accounts/' + ACCOUNT_ID + '/positions/' + instrument;
+			
 			APIRequest(options, callback);
 		}
 	};
