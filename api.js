@@ -86,8 +86,12 @@
 			var options = getBaseOptions();
 			options.method = 'GET';
 			options.path = '/' + API_VERSION + '/accounts/' + ACCOUNT_ID + '/orders/?instrument=' + instrument;
-			
+
 			APIRequest(options, function(existingOrders) {
+
+				//round to 5 decimal points
+				stopLoss = stopLoss || '';
+				if (stopLoss) stopLoss = stopLoss.toFixed(5);
 
 				//if existing order, do nothing
 				if (existingOrders.orders && existingOrders.orders.length === 0) {
