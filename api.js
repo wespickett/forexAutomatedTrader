@@ -81,7 +81,7 @@
 
 			APIRequest(options, callback);
 		},
-		openPosition: function(instrument, positionDirection, stopLoss, callback) {
+		openPosition: function(instrument, units, positionDirection, stopLoss, callback) {
 			//first check for existing orders
 			var options = getBaseOptions();
 			options.method = 'GET';
@@ -92,8 +92,7 @@
 				//if existing order, do nothing
 				if (existingOrders.orders && existingOrders.orders.length === 0) {
 
-					var units = '1000'; //TODO: calculate this number
-					var body = 'Content-Type=application%2Fx-www-form-urlencoded&instrument=' + instrument + '&units=' + units + '&type=market&side=' + positionDirection;
+					var body = 'Content-Type=application%2Fx-www-form-urlencoded&instrument=' + instrument + '&units=' + units + '&type=market&side=' + positionDirection + '&stopLoss=' + stopLoss;
 
 					var options = getBaseOptions();
 					options.method = 'POST';
