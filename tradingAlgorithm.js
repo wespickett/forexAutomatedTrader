@@ -7,8 +7,8 @@
 	fs = require('fs'),
 	fxAPI = require('./api.js'),
 	POSITIONS_FOLDER = 'positions',
-	PIPS_FOR_TAKE_PROFIT = 50,
-	PIPS_FOR_STOP_LOSS = 10,
+	PIPS_FOR_TAKE_PROFIT = 0.0050,
+	PIPS_FOR_STOP_LOSS = 0.0010,
 	fxAPI;
 
 	function getInstrumentPosition(instrument, callback) {
