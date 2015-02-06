@@ -30,7 +30,7 @@ var runCount = 0;
 setInterval(function() {
 
 	runCount++;
-	console.log(runCount + '--- 1. Get prices');
+	console.log('[' + runCount + '][' + new Date().toISOString() + ']--- 1. Get prices');
 	fxAPI.getPrices(instruments, function(data) {
 
 		if (typeof data.prices === 'undefined') {
