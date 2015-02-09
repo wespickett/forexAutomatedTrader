@@ -71,7 +71,7 @@
 	var publicReturn = {
 		getPrices: function(instruments, callback) {
 			var options = getBaseOptions();
-			options.path = '/' + API_VERSION + '/prices?instruments=' + instruments.join(',');
+			options.path = '/' + API_VERSION + '/prices?instruments=' + encodeURIComponent(instruments.join(','));
 
 			APIRequest(options, callback);
 		},

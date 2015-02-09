@@ -9,6 +9,7 @@ var express = require('express'),
 	tradingAlgorithm = require('./tradingAlgorithm.js')(fxAPI);
 
 var DEV=false;
+var WAIT_SECONDS = 60;
 
 var privateKey = fs.readFileSync('server.key').toString();
 var certificate = fs.readFileSync('server.crt').toString();
@@ -24,13 +25,13 @@ server.on('connection', function(stream) {
   console.log("server connected on port 8081 :)");
 });
 
-var instruments = ['USD_CAD'];
+var instruments = ['USD_CAD', 'EUR_USD'];
 var runCount = 0;
 
 setInterval(function() {
 
 	runCount++;
-	console.log('[' + runCount + '][' + new Date().toISOString() + ']--- 1. Get prices');
+	console.log('--- 1. Get prices [' + runCount + '][' + new Date().toISOString() + ']');
 	fxAPI.getPrices(instruments, function(data) {
 
 		if (typeof data.prices === 'undefined') {
@@ -40,15 +41,19 @@ setInterval(function() {
 		} else {
 
 			//TODO: loop through multiple possible returned instruments
-			if (data.prices[0].instrument = instruments[0]) {
-				var askPrice = parseFloat(data.prices[0].ask, 10);
-				var bidPrice = parseFloat(data.prices[0].bid, 10);
-				console.log('ask: ' + askPrice + ' bid: ' + bidPrice);
-				tradingAlgorithm.updatePrice(data.prices[0].instrument, askPrice, bidPrice);
-			}
+			instruments.forEach(function(instrument) {
+				for (var i = 0; i < data.prices.length; i++) {
+					if (data.prices[i].instrument === instrument) {
+						var askPrice = parseFloat(data.prices[i].ask, 10);
+						var bidPrice = parseFloat(data.prices[i].bid, 10);
+						console.log(instrument +' -- ask: ' + askPrice + ' bid: ' + bidPrice);
+						tradingAlgorithm.updatePrice(instrument, askPrice, bidPrice);
+					}
+				}
+			});
 		}
 	});
-}, 1000 * 60);
+}, 1000 * WAIT_SECONDS);
 
 app.get('/', function(rootReq, rootRes) {
 	rootRes.send('');

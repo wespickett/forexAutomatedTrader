@@ -7,7 +7,7 @@
 	fs = require('fs'),
 	fxAPI = require('./api.js'),
 	POSITIONS_FOLDER = 'positions',
-	PIPS_FOR_TAKE_PROFIT = 0.0050,
+	PIPS_FOR_TAKE_PROFIT = 0.0040,
 	PIPS_FOR_STOP_LOSS = 0.0010,
 	fxAPI;
 
@@ -16,15 +16,26 @@
 	}
 
 	function loadInstrumentData(instrument, callback) {
-		//TODO: autocreate file if doesn't exist
-		fs.readFile(POSITIONS_FOLDER + '/' + instrument, function(err, data) {
-			if (err) throw err;
-			data = data.toString();
-			var jsonData = {};
-			if (data && typeof data === 'object') {
-				JSON.parse(data.toString());
+		var path = POSITIONS_FOLDER + '/' + instrument;
+		
+		var readFile = function() {
+			fs.readFile(path, function(err, data) {
+				if (err) throw err;
+				data = data.toString();
+				var jsonData = {};
+				if (data && typeof data === 'object') {
+					JSON.parse(data.toString());
+				}
+				if (typeof callback === 'function') callback(jsonData);
+			});
+		};
+
+		fs.exists(path, function(exists) {
+			if (exists) {
+				readFile();
+			} else {
+				saveInstrumentData(instrument, {}, readFile);
 			}
-			if (typeof callback === 'function') callback(jsonData);
 		});
 	}
 
@@ -35,8 +46,20 @@
 		});
 	}
 
-	function openPositionForInstrument(instrument, positionDirection, stopLoss, callback) {
+	function openPositionForInstrument(instrument, currentPrice, positionDirection, callback) {
 		var units = '1000000'; //TODO: calculate this number
+		var stopLoss = '';
+
+		if (positionDirection === POSITIONS.LONG) {
+			stopLoss = currentPrice - PIPS_FOR_STOP_LOSS;
+		} else if (positionDirection === POSITIONS.SHORT) {
+			stopLoss = currentPrice + PIPS_FOR_STOP_LOSS;
+		} else {
+			console.log('Error: positionDirection not set in openPositionForInstrument');
+			return;
+		}
+
+		console.log('opening ' + instrument + '[' + positionDirection + '] @ price: ' + currentPrice + ' with stopLoss: ' + stopLoss);
 		fxAPI.openPosition(instrument, units, positionDirection, stopLoss, callback);
 	}
 
@@ -59,7 +82,7 @@
 				function decide(instrumentData) {
 
 					var currentDelta = midPoint - instrumentData.avgPrice;
-					console.log('currentDelta: ' + currentDelta + ' position: ' + instrumentData.side);
+					console.log(instrument + ' -- currentDelta: ' + currentDelta + ' position: ' + instrumentData.side);
 
 					if (instrumentData.side === POSITIONS.LONG) {
 						if (currentDelta >= PIPS_FOR_TAKE_PROFIT) {
@@ -69,7 +92,7 @@
 
 								console.log('position closed for profit');
 								//TODO: stop loss not exact since it's a market order it might not execute exactly at midPoint price
-								openPositionForInstrument(instrument, POSITIONS.LONG, midPoint - PIPS_FOR_STOP_LOSS, function(createdPosition) {
+								openPositionForInstrument(instrument, midPoint, POSITIONS.LONG, function(createdPosition) {
 
 									console.log('new position:');
 									console.log(createdPosition);
@@ -92,7 +115,7 @@
 
 								console.log('position closed for profit');
 								//TODO: stop loss not exact since it's a market order it might not execute exactly at midPoint price
-								openPositionForInstrument(instrument, POSITIONS.SHORT, midPoint - PIPS_FOR_STOP_LOSS, function(createdPosition) {
+								openPositionForInstrument(instrument, midPoint, POSITIONS.SHORT, function(createdPosition) {
 
 									console.log('new position:');
 									console.log(createdPosition);
@@ -128,17 +151,17 @@
 							//TODO: better detect stoploss (can use transaction history)
 							//somewhat detect if position doesn't exist from stoploss being triggered.
 							//if it was triggered from stoploss, then switch direction
-							if (localInstrumentData.price - midPoint <= PIPS_FOR_STOP_LOSS && localInstrumentData.side === POSITIONS.LONG) {
+							if (localInstrumentData.side === POSITIONS.LONG && localInstrumentData.price - midPoint >= PIPS_FOR_STOP_LOSS) {
 								localInstrumentData.side = POSITIONS.SHORT;
 								console.log('stoploss happened, switch to ' + localInstrumentData.side);
-							} else if (localInstrumentData.price - midPoint >= PIPS_FOR_STOP_LOSS && localInstrumentData.side === POSITIONS.SHORT) {
+							} else if (localInstrumentData.side === POSITIONS.SHORT && localInstrumentData.price - midPoint <= -PIPS_FOR_STOP_LOSS) {
 								localInstrumentData.side = POSITIONS.LONG;
 								console.log('stoploss happened, switch to ' + localInstrumentData.side);
 							}
 						}
 
 						//TODO: stop loss not exact since it's a market order it might not execute exactly at midPoint price
-						openPositionForInstrument(instrument, localInstrumentData.side, midPoint - PIPS_FOR_STOP_LOSS, function(createdPosition) {
+						openPositionForInstrument(instrument, midPoint, localInstrumentData.side, function(createdPosition) {
 
 							console.log('created position:');
 							console.log(createdPosition);
