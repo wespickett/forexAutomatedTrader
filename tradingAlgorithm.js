@@ -23,8 +23,8 @@
 				if (err) throw err;
 				data = data.toString();
 				var jsonData = {};
-				if (data && typeof data === 'object') {
-					jsonData = JSON.parse(data.toString());
+				if (data && typeof data === 'string') {
+					jsonData = JSON.parse(data);
 				}
 				if (typeof callback === 'function') callback(jsonData);
 			});
