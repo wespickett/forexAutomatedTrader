@@ -24,7 +24,7 @@
 				data = data.toString();
 				var jsonData = {};
 				if (data && typeof data === 'object') {
-					JSON.parse(data.toString());
+					jsonData = JSON.parse(data.toString());
 				}
 				if (typeof callback === 'function') callback(jsonData);
 			});
