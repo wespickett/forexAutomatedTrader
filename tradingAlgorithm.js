@@ -151,10 +151,10 @@
 							//TODO: better detect stoploss (can use transaction history)
 							//somewhat detect if position doesn't exist from stoploss being triggered.
 							//if it was triggered from stoploss, then switch direction
-							if (localInstrumentData.side === POSITIONS.LONG && localInstrumentData.price - midPoint > 0) {
+							if (localInstrumentData.side === POSITIONS.LONG && localInstrumentData.price - midPoint >= PIPS_FOR_STOP_LOSS) {
 								localInstrumentData.side = POSITIONS.SHORT;
 								console.log('stoploss happened, switch to ' + localInstrumentData.side);
-							} else if (localInstrumentData.side === POSITIONS.SHORT && localInstrumentData.price - midPoint < 0) {
+							} else if (localInstrumentData.side === POSITIONS.SHORT && localInstrumentData.price - midPoint <= -PIPS_FOR_STOP_LOSS) {
 								localInstrumentData.side = POSITIONS.LONG;
 								console.log('stoploss happened, switch to ' + localInstrumentData.side);
 							}
