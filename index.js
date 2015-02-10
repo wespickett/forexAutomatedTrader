@@ -9,7 +9,7 @@ var express = require('express'),
 	tradingAlgorithm = require('./tradingAlgorithm.js')(fxAPI);
 
 var DEV=false;
-var WAIT_SECONDS = 60;
+var WAIT_SECONDS = 60 * 5; //5 minutes
 
 var privateKey = fs.readFileSync('server.key').toString();
 var certificate = fs.readFileSync('server.crt').toString();
