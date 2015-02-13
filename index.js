@@ -29,12 +29,12 @@ server.on('connection', function(stream) {
 var instruments = ['USD_CAD', 'EUR_USD'];
 var marketHours = {
 	'EUR_USD': {
-		//closed 4pm -> 1am
+		//closed 4pm -> 1am EST
 		start: 6,
 		end: 21
 	},
 	'USD_CAD': {
-		//closed 7pm -> midnight
+		//closed 7pm -> midnight EST
 		start: 5,
 		end: 24
 	}
