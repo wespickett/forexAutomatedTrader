@@ -9,6 +9,7 @@
 	POSITIONS_FOLDER = 'positions',
 	PIPS_FOR_TAKE_PROFIT = 0.0040,
 	PIPS_FOR_STOP_LOSS = 0.0010,
+	MAX_PIPS_SPREAD = 0.0003,
 	fxAPI;
 
 	function getInstrumentPosition(instrument, callback) {
@@ -46,9 +47,14 @@
 		});
 	}
 
-	function openPositionForInstrument(instrument, currentPrice, positionDirection, callback) {
+	function openPositionForInstrument(instrument, spread, currentPrice, positionDirection, callback) {
 		var units = '1000000'; //TODO: calculate this number
 		var stopLoss = '';
+
+		if (spread >= MAX_PIPS_SPREAD) {
+			console.log('spread too high to open ' + instrument + ' [' + spread + ']');
+			return;
+		} 
 
 		if (positionDirection === POSITIONS.LONG) {
 			stopLoss = currentPrice - PIPS_FOR_STOP_LOSS;
@@ -78,6 +84,7 @@
 
 				console.log(instrumentData);
 				var midPoint = (ask + bid) / 2;
+				var spread = Math.abs(ask - bid);
 
 				function decide(instrumentData) {
 
@@ -92,7 +99,7 @@
 
 								console.log('position closed for profit');
 								//TODO: stop loss not exact since it's a market order it might not execute exactly at midPoint price
-								openPositionForInstrument(instrument, midPoint, POSITIONS.LONG, function(createdPosition) {
+								openPositionForInstrument(instrument, spread, midPoint, POSITIONS.LONG, function(createdPosition) {
 
 									console.log('new position:');
 									console.log(createdPosition);
@@ -115,7 +122,7 @@
 
 								console.log('position closed for profit');
 								//TODO: stop loss not exact since it's a market order it might not execute exactly at midPoint price
-								openPositionForInstrument(instrument, midPoint, POSITIONS.SHORT, function(createdPosition) {
+								openPositionForInstrument(instrument, spread, midPoint, POSITIONS.SHORT, function(createdPosition) {
 
 									console.log('new position:');
 									console.log(createdPosition);
@@ -161,7 +168,7 @@
 						}
 
 						//TODO: stop loss not exact since it's a market order it might not execute exactly at midPoint price
-						openPositionForInstrument(instrument, midPoint, localInstrumentData.side, function(createdPosition) {
+						openPositionForInstrument(instrument, spread, midPoint, localInstrumentData.side, function(createdPosition) {
 
 							console.log('created position:');
 							console.log(createdPosition);
