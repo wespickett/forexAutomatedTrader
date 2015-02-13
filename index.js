@@ -65,7 +65,10 @@ setInterval(function() {
 
 			instruments.forEach(function(instrument) {
 
-				if (!isMarketHours(instrument)) return;
+				if (!isMarketHours(instrument)) {
+					console.log('market closed for ' + instrument);
+					return;
+				}
 
 				for (var i = 0; i < data.prices.length; i++) {
 					if (data.prices[i].instrument === instrument) {
