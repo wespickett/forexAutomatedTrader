@@ -47,7 +47,7 @@ function isMarketHours(instrument) {
 	switch(instrument) {
 		case 'USD_CAD':
 		case 'EUR_USD':
-			return (now.getUTCHours() > marketHours[instrument].start && now.getUTCHours() < marketHours[instrument].end);
+			return (now.getUTCHours() >= marketHours[instrument].start && now.getUTCHours() < marketHours[instrument].end);
 	}
 }
 
